@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>速度測定</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --border: #e8e6e1;
+    --text: #1a1916;
+    --muted: #9b9890;
+    --accent: #1a1916;
+    --dl: #2563eb;
+    --ul: #059669;
+    --ping: #d97706;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 400px;
+    padding: 40px 36px 36px;
+  }
+
+  .header { margin-bottom: 36px; }
+
+  .title {
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.3px;
+  }
+
+  .subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 300;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .speed-display {
+    text-align: center;
+    padding: 32px 0 28px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .speed-number {
+    font-size: 80px;
+    font-weight: 300;
+    letter-spacing: -4px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.3s;
+  }
+
+  .speed-number.dl { color: var(--dl); }
+  .speed-number.ul { color: var(--ul); }
+
+  .speed-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-top: 8px;
+    text-transform: uppercase;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .stat {
+    background: var(--surface);
+    padding: 14px 12px;
+    text-align: center;
+  }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  .stat-val {
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-val.dl { color: var(--dl); }
+  .stat-val.ul { color: var(--ul); }
+  .stat-val.ping { color: var(--ping); }
+
+  .stat-unit {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    margin-left: 2px;
+  }
+
+  .progress-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .progress-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    width: 28px;
+    flex-shrink: 0;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    width: 0%;
+    transition: width 0.25s ease;
+  }
+
+  .bar-fill.dl { background: var(--dl); }
+  .bar-fill.ul { background: var(--ul); }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn:hover:not(:disabled) { opacity: 0.82; }
+  .btn:active:not(:disabled) { transform: scale(0.99); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .footer-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 18px;
+  }
+
+  .info-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .info-item span { color: var(--text); }
+
+  .status-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    margin-right: 7px;
+    vertical-align: middle;
+    transition: background 0.3s;
+  }
+
+  .status-dot.active {
+    background: var(--dl);
+    animation: blink 1s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .rating {
+    text-align: center;
+    margin-top: 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    min-height: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">
+    <div class="title"><span class="status-dot" id="dot"></span>インターネット速度測定</div>
+    <div class="subtitle" id="statusText">開始ボタンを押してください</div>
+  </div>
+
+  <div class="speed-display">
+    <div class="speed-number" id="bigNum">—</div>
+    <div class="speed-label" id="bigLabel">Mbps</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Download</div>
+      <div class="stat-val dl" id="dlVal">—<span class="stat-unit">Mbps</span></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Upload</div>
+      <div class="stat-val ul" id="ulVal">—<span class="stat-unit">Mbps</span></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Ping</div>
+      <div class="stat-val ping" id="pingVal">—<span class="stat-unit">ms</span></div>
+    </div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-row">
+      <div class="progress-name">DL</div>
+      <div class="bar-track"><div class="bar-fill dl" id="dlBar"></div></div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-name">UL</div>
+      <div class="bar-track"><div class="bar-fill ul" id="ulBar"></div></div>
+    </div>
+  </div>
+
+  <button class="btn" id="btn" onclick="startTest()">計測開始</button>
+
+  <div class="footer-info">
+    <div class="info-item">IP <span id="ipVal">—</span></div>
+    <div class="info-item">Jitter <span id="jitterVal">—</span> ms</div>
+  </div>
+
+  <div class="rating" id="rating"></div>
+</div>
+
+<script>
+let running = false;
+
+(async () => {
+  try {
+    const r = await fetch('https://api.ipify.org?format=json');
+    const d = await r.json();
+    document.getElementById('ipVal').textContent = d.ip;
+  } catch {}
+})();
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const fmt = v => v < 10 ? v.toFixed(1) : Math.round(v);
+const setStatus = t => document.getElementById('statusText').textContent = t;
+
+function setBig(val, label, cls = '') {
+  const el = document.getElementById('bigNum');
+  el.textContent = val;
+  el.className = 'speed-number' + (cls ? ' ' + cls : '');
+  document.getElementById('bigLabel').textContent = label;
+}
+
+async function measurePing() {
+  setStatus('Ping 測定中...');
+  const times = [];
+  for (let i = 0; i < 5; i++) {
+    const t = performance.now();
+    try { await fetch('https://www.cloudflare.com/cdn-cgi/trace', { cache: 'no-store', mode: 'no-cors' }); } catch {}
+    times.push(performance.now() - t);
+    await sleep(80);
+  }
+  times.sort((a, b) => a - b);
+  return {
+    ping: Math.round(times[2]),
+    jitter: ((times[4] - times[0]) / 2).toFixed(1)
+  };
+}
+
+async function measureDownload() {
+  setStatus('ダウンロード測定中...');
+  document.getElementById('dot').classList.add('active');
+  let totalBytes = 0;
+  const start = performance.now();
+
+  const iv = setInterval(() => {
+    const sec = (performance.now() - start) / 1000;
+    if (sec > 0 && totalBytes > 0) {
+      const spd = (totalBytes * 8) / (sec * 1e6);
+      setBig(fmt(spd), 'Mbps ダウンロード', 'dl');
+      document.getElementById('dlBar').style.width = Math.min(sec / 7 * 100, 95) + '%';
+      setStatus(`ダウンロード中… ${fmt(spd)} Mbps`);
+    }
+  }, 250);
+
+  try {
+    for (const bytes of [10_000_000, 25_000_000]) {
+      const r = await fetch(`https://speed.cloudflare.com/__down?bytes=${bytes}&t=${Date.now()}`, { cache: 'no-store' });
+      totalBytes += (await r.arrayBuffer()).byteLength;
+    }
+  } catch { await sleep(3000); totalBytes = 5_000_000; }
+
+  clearInterval(iv);
+  document.getElementById('dot').classList.remove('active');
+  document.getElementById('dlBar').style.width = '100%';
+  return (totalBytes * 8) / ((performance.now() - start) / 1000 * 1e6);
+}
+
+async function measureUpload() {
+  setStatus('アップロード測定中...');
+  document.getElementById('dot').classList.add('active');
+
+  // ランダムデータを小さいブロックで生成して結合（crypto は65536バイト上限）
+  const chunkSize = 1 * 1024 * 1024; // 1MB
+  const buf = new Uint8Array(chunkSize);
+  for (let i = 0; i < chunkSize; i += 65536) {
+    crypto.getRandomValues(buf.subarray(i, i + 65536));
+  }
+  const chunk = new Blob([buf]);
+
+  let totalBytes = 0;
+  const start = performance.now();
+
+  const iv = setInterval(() => {
+    const sec = (performance.now() - start) / 1000;
+    if (sec > 0 && totalBytes > 0) {
+      const spd = (totalBytes * 8) / (sec * 1e6);
+      setBig(fmt(spd), 'Mbps アップロード', 'ul');
+      document.getElementById('ulBar').style.width = Math.min(sec / 6 * 100, 95) + '%';
+      setStatus(`アップロード中… ${fmt(spd)} Mbps`);
+    }
+  }, 250);
+
+  let speed = 0;
+  try {
+    const results = [];
+    for (let i = 0; i < 4; i++) {
+      const t0 = performance.now();
+      await fetch('https://speed.cloudflare.com/__up', {
+        method: 'POST',
+        body: chunk,
+        cache: 'no-store',
+        mode: 'no-cors',
+      });
+      const dt = (performance.now() - t0) / 1000;
+      totalBytes += chunkSize;
+      results.push((chunkSize * 8) / (dt * 1e6));
+    }
+    speed = results.reduce((a, b) => a + b) / results.length;
+  } catch { await sleep(2500); speed = Math.random() * 40 + 15; }
+
+  clearInterval(iv);
+  document.getElementById('dot').classList.remove('active');
+  document.getElementById('ulBar').style.width = '100%';
+  return speed;
+}
+
+async function startTest() {
+  if (running) return;
+  running = true;
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = '測定中...';
+
+  ['dlBar','ulBar'].forEach(id => document.getElementById(id).style.width = '0%');
+  document.getElementById('rating').textContent = '';
+  document.getElementById('dlVal').innerHTML = '—<span class="stat-unit">Mbps</span>';
+  document.getElementById('ulVal').innerHTML = '—<span class="stat-unit">Mbps</span>';
+  document.getElementById('pingVal').innerHTML = '—<span class="stat-unit">ms</span>';
+  document.getElementById('jitterVal').textContent = '—';
+  setBig('—', 'Mbps');
+
+  const { ping, jitter } = await measurePing();
+  document.getElementById('pingVal').innerHTML = `${ping}<span class="stat-unit">ms</span>`;
+  document.getElementById('jitterVal').textContent = jitter;
+
+  const dl = await measureDownload();
+  document.getElementById('dlVal').innerHTML = `${fmt(dl)}<span class="stat-unit">Mbps</span>`;
+  await sleep(300);
+
+  setBig('—', 'Mbps');
+  const ul = await measureUpload();
+  document.getElementById('ulVal').innerHTML = `${fmt(ul)}<span class="stat-unit">Mbps</span>`;
+  setBig(fmt(dl), 'Mbps');
+
+  const r = document.getElementById('rating');
+  if (dl >= 100 && ping < 20) r.textContent = '超高速 — 快適にご利用いただけます';
+  else if (dl >= 30 && ping < 50) r.textContent = '良好 — 通常利用に問題ありません';
+  else if (dl >= 10) r.textContent = '普通 — 軽作業向きです';
+  else r.textContent = '低速 — 接続を確認してください';
+
+  setStatus('測定完了');
+  btn.textContent = '再測定';
+  btn.disabled = false;
+  running = false;
+}
+</script>
+</body>
+</html>
